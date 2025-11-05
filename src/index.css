@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* England Official Colors */
+    --background: 0 0% 100%;
+    --foreground: 214 100% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 214 100% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 214 100% 15%;
+    --primary: 214 100% 22%; /* England Blue #002D72 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 355 99% 44%; /* England Red #E1001A */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 210 17% 98%;
+    --muted-foreground: 215 14% 34%;
+    --accent: 214 100% 22%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 355 99% 44%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 214 100% 22%;
+    --radius: 0rem; /* Sharp corners like England website */
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 260 77% 23%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 351 83% 46%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 260 77% 23%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-england-gray-50 text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold text-england-navy;
+    letter-spacing: -0.02em;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl font-extrabold;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl lg:text-5xl font-extrabold;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl font-bold;
+  }
+}
+
+/* England-style card shadows */
+@layer utilities {
+  .england-card {
+    @apply bg-white shadow-[0_4px_20px_rgba(0,45,114,0.1)] transition-all duration-300;
+  }
+
+  .england-card:hover {
+    @apply shadow-[0_8px_30px_rgba(0,45,114,0.15)];
+  }
+
+  .england-button-primary {
+    @apply bg-england-red hover:bg-[#C00016] text-white font-bold px-8 py-3 transition-colors duration-200;
+  }
+
+  .england-button-secondary {
+    @apply bg-england-blue hover:bg-[#001E50] text-white font-bold px-8 py-3 transition-colors duration-200;
+  }
+
+  /* Angular cut effect like England website */
+  .angular-cut {
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%);
+  }
+}
