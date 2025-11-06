@@ -1,7 +1,8 @@
 import { Message } from '@/types';
 
-const SESSION_KEY = 'england-messages';
+export const SESSION_KEY = 'england-messages';
 const SESSION_COUNT_KEY = 'england-messages-count';
+export const SESSION_MESSAGES_UPDATED_EVENT = 'england-messages-updated';
 
 export const saveMessage = (message: Message): void => {
   try {
@@ -9,6 +10,10 @@ export const saveMessage = (message: Message): void => {
     existing.push({ ...message, isSessionMessage: true });
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(existing));
     updateSessionCount(existing.length);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(SESSION_MESSAGES_UPDATED_EVENT));
+    }
   } catch (error) {
     console.error('Error saving message to session storage:', error);
   }
@@ -54,6 +59,10 @@ export const clearSessionMessages = (): void => {
   try {
     sessionStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_COUNT_KEY);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event(SESSION_MESSAGES_UPDATED_EVENT));
+    }
   } catch (error) {
     console.error('Error clearing session storage:', error);
   }
