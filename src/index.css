@@ -101,3 +101,37 @@
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%);
   }
 }
+
+@layer utilities {
+  .message-board-surface {
+    @apply bg-gradient-to-br from-[#001946] via-[#012f7a] to-[#041137] text-white;
+  }
+
+  .message-board-panel {
+    @apply bg-white/80 backdrop-blur-sm border border-white/40 shadow-[0_25px_70px_rgba(0,0,0,0.2)];
+  }
+
+  .message-board-panel-dark {
+    @apply bg-england-blue/80 backdrop-blur-sm border border-white/20 shadow-[0_25px_60px_rgba(0,0,0,0.25)];
+  }
+
+  .collage-grid {
+    display: grid;
+    grid-auto-flow: dense;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-auto-rows: 110px;
+    gap: 1.5rem;
+  }
+
+  .collage-card {
+    @apply relative h-full w-full overflow-hidden rounded-3xl border border-white/30 bg-white/80 p-0 shadow-[0_15px_40px_rgba(0,0,0,0.18)] transition-all duration-500 ease-out;
+  }
+
+  .collage-card:hover {
+    @apply translate-y-[-6px] shadow-[0_25px_60px_rgba(0,0,0,0.25)];
+  }
+
+  .message-chip {
+    @apply inline-flex items-center rounded-full border border-white/30 bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-white;
+  }
+}

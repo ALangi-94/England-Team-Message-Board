@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -9,9 +9,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, MessageSquarePlus } from 'lucide-react';
 import { getPlayerById } from '@/data/players';
 import { syntheticMessages } from '@/data/syntheticMessages';
-import { getSessionMessages } from '@/utils/sessionStorage';
+import {
+  getSessionMessagesForPlayer,
+  SESSION_KEY,
+  SESSION_MESSAGES_UPDATED_EVENT,
+} from '@/utils/sessionStorage';
 import { formatMessageTimestamp } from '@/utils/dateFormat';
 import type { Message, FontStyle } from '@/types';
+import { ParallaxBackdrop } from '@/components/ParallaxBackdrop';
 
 type FilterType = 'recent' | 'random' | 'media';
 
@@ -19,36 +24,84 @@ export const PlayerWallPage = () => {
   const { playerId } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<FilterType>('recent');
+  const [sessionMessages, setSessionMessages] = useState<Message[]>([]);
+  const [randomizedMessages, setRandomizedMessages] = useState<Message[]>([]);
 
   const player = playerId ? getPlayerById(playerId) : undefined;
 
-  // Combine synthetic and session messages
+  const loadSessionMessages = useCallback(() => {
+    if (!playerId) {
+      setSessionMessages([]);
+      return;
+    }
+
+    setSessionMessages(getSessionMessagesForPlayer(playerId));
+  }, [playerId]);
+
+  useEffect(() => {
+    loadSessionMessages();
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === SESSION_KEY) {
+        loadSessionMessages();
+      }
+    };
+
+    const handleSessionUpdate = () => {
+      loadSessionMessages();
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(SESSION_MESSAGES_UPDATED_EVENT, handleSessionUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(SESSION_MESSAGES_UPDATED_EVENT, handleSessionUpdate);
+    };
+  }, [loadSessionMessages]);
+
   const allMessages = useMemo(() => {
     if (!playerId) return [];
 
     const synthetic = syntheticMessages.filter(msg => msg.playerId === playerId);
-    const session = getSessionMessages().filter(msg => msg.playerId === playerId);
 
-    return [...synthetic, ...session];
-  }, [playerId]);
+    return [...synthetic, ...sessionMessages];
+  }, [playerId, sessionMessages]);
 
-  // Filter messages
+  useEffect(() => {
+    if (!allMessages.length) {
+      setRandomizedMessages([]);
+      return;
+    }
+
+    const shuffled = [...allMessages];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    setRandomizedMessages(shuffled);
+  }, [allMessages]);
+
   const filteredMessages = useMemo(() => {
-    let messages = [...allMessages];
-
     switch (filter) {
       case 'recent':
-        return messages.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        return [...allMessages].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
       case 'random':
-        return messages.sort(() => 0.5 - Math.random());
+        return randomizedMessages;
       case 'media':
-        return messages.filter(msg => msg.media).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        return allMessages
+          .filter(msg => msg.media)
+          .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
       default:
-        return messages;
+        return allMessages;
     }
-  }, [allMessages, filter]);
+  }, [allMessages, filter, randomizedMessages]);
 
-  // Font style mapping
   const getFontClass = (font: FontStyle): string => {
     const fontMap: Record<FontStyle, string> = {
       inter: 'font-sans',
@@ -68,14 +121,31 @@ export const PlayerWallPage = () => {
     return sizeMap[size] || 'text-base';
   };
 
+  const calculateRowSpan = (message: Message): number => {
+    const base = 3;
+    const lengthBonus = Math.min(4, Math.floor(message.messageText.length / 80));
+    const mediaBonus = message.media ? 2 : 0;
+    const fontBonus = message.styling.fontSize === 'large' ? 2 : message.styling.fontSize === 'small' ? 0 : 1;
+    return base + lengthBonus + mediaBonus + fontBonus;
+  };
+
+  const calculateColumnSpan = (index: number): number => {
+    const map = [2, 1, 1, 2, 1];
+    return map[index % map.length];
+  };
+
   if (!player) {
     return (
-      <div className="min-h-screen bg-england-blue flex items-center justify-center">
-        <div className="england-card bg-white p-12 max-w-lg mx-4">
-          <h1 className="text-3xl font-extrabold text-england-navy uppercase mb-4 text-center">Player Not Found</h1>
-          <p className="text-england-gray-700 mb-6 text-center">The player you're looking for doesn't exist.</p>
-          <Link to="/players">
-            <Button className="england-button-primary w-full uppercase font-extrabold">Back to Players</Button>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#001946] via-[#012f7a] to-[#041137] p-6 text-white">
+        <div className="message-board-panel max-w-lg rounded-3xl px-10 py-12 text-center text-england-blue">
+          <h1 className="text-3xl font-extrabold uppercase tracking-tight text-england-blue">Player Not Found</h1>
+          <p className="mt-4 text-sm uppercase tracking-[0.3em] text-england-blue/70">
+            The player you are looking for does not exist.
+          </p>
+          <Link to="/players" className="mt-8 block">
+            <Button className="england-button-secondary w-full rounded-2xl py-4 text-sm font-extrabold uppercase tracking-[0.3em]">
+              Back to squad
+            </Button>
           </Link>
         </div>
       </div>
@@ -83,193 +153,144 @@ export const PlayerWallPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-england-blue">
-      {/* Back Button */}
-      <div className="container mx-auto px-4 pt-6">
-        <Link to="/players">
-          <Button variant="ghost" className="gap-2 text-white hover:bg-white/10 font-bold uppercase">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Players
-          </Button>
-        </Link>
-      </div>
+    <div className="relative min-h-screen overflow-hidden message-board-surface">
+      <ParallaxBackdrop className="z-0" variant="red" />
 
-      {/* Player Hero Section */}
-      <section className="bg-england-blue py-12 border-b-4 border-white">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="container mx-auto px-4"
-        >
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="relative inline-block mb-6">
-              <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
-                <AvatarImage src={player.imageUrl} alt={player.name} />
-                <AvatarFallback className="text-4xl font-bold bg-england-navy text-white">
-                  {player.name.split(' ').map(n => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-2 -right-2 w-12 h-12 flex items-center justify-center text-white font-bold text-lg border-4 border-white shadow-md bg-england-red">
-                {player.number}
-              </div>
-            </div>
-
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white uppercase mb-4 tracking-tight">
-              {player.name}
-            </h1>
-            <div className="flex items-center justify-center gap-4 mb-6">
-              <div className="england-card bg-white px-6 py-3">
-                <p className="text-england-navy font-bold uppercase text-sm">
-                  {player.position}
-                </p>
-              </div>
-              <div className="england-card bg-white px-6 py-3">
-                <p className="text-england-navy font-bold uppercase text-sm">
-                  #{player.number}
-                </p>
-              </div>
-            </div>
-            <Badge className="text-base px-4 py-2 mb-8 bg-england-red text-white font-bold uppercase">
-              {allMessages.length} {allMessages.length === 1 ? 'message' : 'messages'}
-            </Badge>
-
-            {/* Add Message Button - Fixed */}
-            <div className="mb-8">
-              <Button
-                size="lg"
-                className="england-button-primary gap-2 text-lg px-8 py-6 h-auto uppercase font-extrabold"
-                onClick={() => navigate(`/player/${player.id}/submit`)}
-              >
-                <MessageSquarePlus className="w-6 h-6" />
-                ADD YOUR MESSAGE
+      <div className="relative z-10">
+        <div className="container mx-auto px-4 pb-24 pt-12">
+          <div className="flex items-center justify-between">
+            <Link to="/players">
+              <Button variant="ghost" className="gap-2 rounded-full bg-white/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white transition hover:bg-white/20">
+                <ArrowLeft className="h-4 w-4" /> Back to players
               </Button>
-            </div>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* Filter Tabs */}
-      <section className="bg-england-blue py-8">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="container mx-auto px-4"
-        >
-          <div className="max-w-2xl mx-auto">
-            <Tabs value={filter} onValueChange={(value) => setFilter(value as FilterType)}>
-              <TabsList className="grid w-full grid-cols-3 h-auto bg-white">
-                <TabsTrigger value="recent" className="py-3 font-bold uppercase data-[state=active]:bg-england-blue data-[state=active]:text-white">
-                  Recent
-                </TabsTrigger>
-                <TabsTrigger value="random" className="py-3 font-bold uppercase data-[state=active]:bg-england-blue data-[state=active]:text-white">
-                  Random
-                </TabsTrigger>
-                <TabsTrigger value="media" className="py-3 font-bold uppercase data-[state=active]:bg-england-blue data-[state=active]:text-white">
-                  With Media
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* Messages Grid */}
-      <section className="bg-england-blue py-12">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="container mx-auto px-4 pb-16"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-            {filteredMessages.map((message: Message, index: number) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                whileHover={{ y: -4 }}
-              >
-                <Card
-                  className="h-full england-card hover:shadow-2xl transition-all duration-300 border-l-4 border-l-england-blue"
-                  style={{ backgroundColor: message.styling.backgroundColor }}
-                >
-                  <CardContent className="p-6">
-                    {/* Fan Name */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <p className="font-bold text-sm uppercase" style={{ color: message.styling.textColor }}>
-                        {message.fanName}
-                      </p>
-                      {message.isSessionMessage && (
-                        <Badge variant="secondary" className="text-xs bg-england-red text-white font-bold uppercase">
-                          Your message
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Message Text */}
-                    <p
-                      className={`mb-4 ${getFontClass(message.styling.font)} ${getFontSize(message.styling.fontSize)}`}
-                      style={{ color: message.styling.textColor }}
-                    >
-                      {message.messageText}
-                    </p>
-
-                    {/* Media */}
-                    {message.media && (
-                      <div className="mb-4">
-                        {message.media.type === 'emoji' && (
-                          <div className="text-4xl">{message.media.emoji}</div>
-                        )}
-                        {message.media.type === 'gif' && message.media.url && (
-                          <img
-                            src={message.media.url}
-                            alt="GIF"
-                            className="max-h-48 w-auto"
-                          />
-                        )}
-                        {message.media.type === 'image' && message.media.url && (
-                          <img
-                            src={message.media.url}
-                            alt="Image"
-                            className="max-h-48 w-auto"
-                          />
-                        )}
-                      </div>
-                    )}
-
-                    {/* Timestamp */}
-                    <p className="text-xs opacity-70 font-bold uppercase" style={{ color: message.styling.textColor }}>
-                      {formatMessageTimestamp(message.timestamp)}
-                    </p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+            </Link>
+            <span className="message-chip hidden md:inline-flex">Fan collage view</span>
           </div>
 
-          {/* No Messages */}
-          {filteredMessages.length === 0 && (
-            <div className="text-center py-16">
-              <div className="england-card bg-white p-12 max-w-lg mx-auto">
-                <p className="text-xl text-england-navy font-bold uppercase mb-4">
-                  {filter === 'media'
-                    ? 'No messages with media yet.'
-                    : 'No messages yet. Be the first to send support!'}
-                </p>
+          <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,320px)_1fr]">
+            <motion.aside
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              className="message-board-panel-dark relative overflow-hidden rounded-[2.5rem] p-10 text-white shadow-2xl"
+            >
+              <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-white/10 blur-3xl" />
+              <div className="absolute -bottom-10 -left-10 h-36 w-36 rounded-full bg-england-red/30 blur-3xl" />
+              <div className="relative flex flex-col items-center text-center">
+                <Avatar className="h-28 w-28 border-4 border-white/60 shadow-[0_18px_45px_rgba(0,0,0,0.35)]">
+                  <AvatarImage src={player.imageUrl} alt={player.name} />
+                  <AvatarFallback className="bg-white/20 text-3xl font-bold text-white">
+                    {player.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="mt-6 flex flex-col items-center gap-2">
+                  <h1 className="text-3xl font-extrabold uppercase tracking-tight text-white">{player.name}</h1>
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <span className="message-chip bg-white/30 text-xs">{player.position}</span>
+                    <span className="message-chip bg-england-red/60 text-xs">#{player.number}</span>
+                  </div>
+                </div>
+                <Badge className="mt-6 rounded-full bg-white/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-white">
+                  {allMessages.length} {allMessages.length === 1 ? 'message' : 'messages'}
+                </Badge>
+
                 <Button
+                  size="lg"
+                  className="mt-10 h-14 w-full rounded-2xl bg-white/90 text-xs font-extrabold uppercase tracking-[0.4em] text-england-blue transition hover:bg-white"
                   onClick={() => navigate(`/player/${player.id}/submit`)}
-                  className="england-button-primary uppercase font-extrabold"
                 >
-                  Send the First Message
+                  <MessageSquarePlus className="mr-2 h-5 w-5" /> Add your message
                 </Button>
+
+                <div className="mt-10 w-full">
+                  <Tabs value={filter} onValueChange={(value) => setFilter(value as FilterType)}>
+                    <TabsList className="grid h-auto w-full grid-cols-3 rounded-2xl bg-white/15 p-2">
+                      <TabsTrigger value="recent" className="rounded-xl py-3 text-[0.6rem] font-semibold uppercase tracking-[0.3em] text-white data-[state=active]:bg-white data-[state=active]:text-england-blue">
+                        Recent
+                      </TabsTrigger>
+                      <TabsTrigger value="random" className="rounded-xl py-3 text-[0.6rem] font-semibold uppercase tracking-[0.3em] text-white data-[state=active]:bg-white data-[state=active]:text-england-blue">
+                        Remix
+                      </TabsTrigger>
+                      <TabsTrigger value="media" className="rounded-xl py-3 text-[0.6rem] font-semibold uppercase tracking-[0.3em] text-white data-[state=active]:bg-white data-[state=active]:text-england-blue">
+                        With media
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
               </div>
-            </div>
-          )}
-        </motion.div>
-      </section>
+            </motion.aside>
+
+            <motion.section
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="relative"
+            >
+              <div className="collage-grid">
+                {filteredMessages.map((message: Message, index: number) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.35, delay: index * 0.04 }}
+                    whileHover={{ rotate: 1.2 }}
+                    style={{
+                      gridRow: `span ${calculateRowSpan(message)}`,
+                      gridColumn: `span ${calculateColumnSpan(index)}`,
+                    }}
+                  >
+                    <Card
+                      className="collage-card"
+                      style={{ backgroundColor: message.styling.backgroundColor }}
+                    >
+                      <CardContent className="flex h-full flex-col gap-5 p-8">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: message.styling.textColor }}>
+                            {message.fanName}
+                          </span>
+                          <span className="text-[0.55rem] uppercase tracking-[0.35em]" style={{ color: message.styling.textColor }}>
+                            {formatMessageTimestamp(message.timestamp)}
+                          </span>
+                        </div>
+
+                        <p
+                          className={`leading-relaxed ${getFontClass(message.styling.font)} ${getFontSize(message.styling.fontSize)}`}
+                          style={{ color: message.styling.textColor }}
+                        >
+                          {message.messageText}
+                        </p>
+
+                        {message.media && message.media.type === 'emoji' && (
+                          <span className="text-5xl" role="img" aria-label="emoji">
+                            {message.media.emoji}
+                          </span>
+                        )}
+
+                        <div
+                          className="mt-auto flex items-center justify-between text-[0.55rem] font-semibold uppercase tracking-[0.35em]"
+                          style={{ color: message.styling.textColor }}
+                        >
+                          <span>{message.isSessionMessage ? 'New session drop' : 'Fan submission'}</span>
+                          <span>#{player.number} {player.name.split(' ')[0]}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+
+              {filteredMessages.length === 0 && (
+                <div className="message-board-panel mt-10 rounded-3xl px-10 py-16 text-center text-england-blue">
+                  <h2 className="text-xl font-extrabold uppercase tracking-[0.3em]">No messages match this filter</h2>
+                  <p className="mt-4 text-sm uppercase tracking-[0.25em] text-england-blue/70">
+                    Try a different view to reveal more fan love.
+                  </p>
+                </div>
+              )}
+            </motion.section>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
