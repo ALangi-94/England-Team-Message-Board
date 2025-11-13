@@ -119,38 +119,43 @@ export const PlayersPage = () => {
                   }}
                   whileHover={{ y: -8 }}
                 >
-                  <Link to={`/player/${player.id}`}>
-                    <Card className="h-full cursor-pointer england-card bg-white hover:shadow-2xl transition-all duration-300">
-                      <CardHeader className="text-center">
-                        <div className="relative mx-auto mb-4">
-                          <Avatar className="w-24 h-24 border-4 border-england-gray-200">
-                            <AvatarImage src={player.imageUrl} alt={player.name} />
-                            <AvatarFallback className="text-2xl font-bold bg-england-blue text-white">
-                              {player.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="absolute -bottom-2 -right-2 w-10 h-10 flex items-center justify-center text-white font-bold border-4 border-white shadow-md bg-england-red">
-                            {player.number}
-                          </div>
+                  <Card className="h-full england-card flex flex-col">
+                    <CardHeader className="text-center flex flex-col items-center gap-3 min-h-[260px]">
+                      <div className="relative mx-auto mb-4">
+                        <Avatar className="w-24 h-24 border-4 border-england-gray-200">
+                          <AvatarImage src={player.imageUrl} alt={player.name} />
+                          <AvatarFallback className="text-2xl font-bold bg-england-blue text-white">
+                            {player.name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-2 -right-2 w-10 h-10 flex items-center justify-center text-white font-bold border-4 border-white shadow-md bg-england-red">
+                          {player.number}
                         </div>
-                        <h3 className="text-xl font-extrabold text-england-navy uppercase">{player.name}</h3>
-                        <p className="text-sm text-england-gray-700 font-bold uppercase">{player.position}</p>
-                      </CardHeader>
-                      <CardContent className="text-center">
-                        <Badge className="text-sm px-3 py-1 bg-england-red text-white font-bold uppercase">
-                          {messageCount} {messageCount === 1 ? 'message' : 'messages'}
-                        </Badge>
-                      </CardContent>
-                      <CardFooter className="justify-center">
-                        <Button
-                          variant="outline"
-                          className="w-full border-2 border-england-blue text-england-blue hover:bg-england-blue hover:text-white transition-all duration-300 font-bold uppercase"
-                        >
-                          View Messages
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  </Link>
+                      </div>
+                      <h3 className="text-xl font-extrabold text-england-navy uppercase">{player.name}</h3>
+                      <p className="text-sm text-england-gray-700 font-bold uppercase">{player.position}</p>
+                    </CardHeader>
+                    <CardContent className="flex flex-1 items-center justify-center text-center">
+                      <Badge className="text-sm px-3 py-1 bg-england-red text-white font-bold uppercase">
+                        {messageCount} {messageCount === 1 ? 'message' : 'messages'}
+                      </Badge>
+                    </CardContent>
+                    <CardFooter className="flex w-full flex-col gap-3 pt-0">
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="w-full border-2 border-england-blue text-england-blue hover:bg-england-blue hover:text-white transition-all duration-300 font-bold uppercase"
+                      >
+                        <Link to={`/player/${player.id}`}>View Messages</Link>
+                      </Button>
+                      <Button
+                        asChild
+                        className="w-full bg-england-red text-white hover:bg-england-red/90 transition-all duration-300 font-bold uppercase"
+                      >
+                        <Link to={`/player/${player.id}/submit`}>Add Message</Link>
+                      </Button>
+                    </CardFooter>
+                  </Card>
                 </motion.div>
               );
             })}

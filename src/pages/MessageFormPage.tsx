@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,11 +17,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, Smile } from 'lucide-react';
+import { Loader2, Search, Smile } from 'lucide-react';
 import { getPlayerById, players } from '@/data/players';
 import { saveMessage } from '@/utils/sessionStorage';
 import { moderateContent, getModerationMessage } from '@/utils/contentModeration';
 import type { FontStyle, FontSize, MessageMedia } from '@/types';
+import { useGifSearch, GifResult } from '@/hooks/useGifSearch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { cn } from '@/lib/utils';
 
 // Form validation schema
 const messageFormSchema = z.object({
@@ -43,8 +46,18 @@ export const MessageFormPage = () => {
   const [moderationError, setModerationError] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'none' | 'emoji' | 'gif' | 'image'>('none');
   const [selectedEmoji, setSelectedEmoji] = useState<string>('');
+  const [selectedGif, setSelectedGif] = useState<GifResult | null>(null);
+  const [gifQuery, setGifQuery] = useState('england football celebration');
 
   const player = routePlayerId ? getPlayerById(routePlayerId) : undefined;
+
+  const {
+    results: gifResults,
+    isLoading: isGifLoading,
+    error: gifError,
+    searchGifs,
+    clearError: clearGifError,
+  } = useGifSearch();
 
   const form = useForm<MessageFormData>({
     resolver: zodResolver(messageFormSchema),
@@ -80,6 +93,24 @@ export const MessageFormPage = () => {
     setSelectedEmoji(emojiData.emoji);
   };
 
+  const handleMediaTypeChange = (value: 'none' | 'emoji' | 'gif' | 'image') => {
+    setMediaType(value);
+
+    if (value !== 'emoji') {
+      setSelectedEmoji('');
+    }
+
+    if (value !== 'gif') {
+      setSelectedGif(null);
+    }
+  };
+
+  useEffect(() => {
+    if (mediaType === 'gif' && gifResults.length === 0) {
+      searchGifs(gifQuery);
+    }
+  }, [mediaType, gifResults.length, gifQuery, searchGifs]);
+
   const onSubmit = async (data: MessageFormData) => {
     setIsSubmitting(true);
     setModerationError(null);
@@ -104,6 +135,16 @@ export const MessageFormPage = () => {
     let media: MessageMedia | undefined;
     if (mediaType === 'emoji' && selectedEmoji) {
       media = { type: 'emoji', emoji: selectedEmoji };
+    } else if (mediaType === 'gif' && selectedGif) {
+      media = {
+        type: 'gif',
+        url: selectedGif.url,
+        originalUrl: selectedGif.fullUrl,
+        attribution: selectedGif.attribution,
+        provider: selectedGif.provider,
+        license: selectedGif.license,
+        licenseUrl: selectedGif.licenseUrl,
+      };
     }
 
     // Create message object
@@ -413,26 +454,29 @@ export const MessageFormPage = () => {
                           <FormItem>
                             <FormLabel className="font-bold uppercase text-england-navy">Text Color</FormLabel>
                             <FormControl>
-                              <div className="grid grid-cols-2 gap-4">
+                              <ToggleGroup
+                                type="single"
+                                value={field.value}
+                                onValueChange={(value) => value && field.onChange(value)}
+                                className="grid grid-cols-2 gap-4"
+                              >
                                 {textColors.map((color) => (
-                                  <button
+                                  <ToggleGroupItem
                                     key={color.value}
-                                    type="button"
-                                    onClick={() => field.onChange(color.value)}
-                                    className={`flex items-center gap-3 p-3 rounded-md border-2 transition-all ${
-                                      field.value === color.value
-                                        ? 'border-[#1D1160] bg-[#1D1160]/5'
-                                        : 'border-gray-200 hover:bg-gray-50'
-                                    }`}
+                                    value={color.value}
+                                    className={cn(
+                                      'h-auto justify-start gap-3 border-2 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-england-navy',
+                                      'data-[state=on]:border-[#1D1160] data-[state=on]:bg-[#1D1160]/10'
+                                    )}
                                   >
-                                    <div
-                                      className="w-8 h-8 rounded-full border-2 border-gray-300"
+                                    <span
+                                      className="h-8 w-8 rounded-full border border-england-gray-200"
                                       style={{ backgroundColor: color.value }}
                                     />
-                                    <span className="text-sm font-medium">{color.name}</span>
-                                  </button>
+                                    {color.name}
+                                  </ToggleGroupItem>
                                 ))}
-                              </div>
+                              </ToggleGroup>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -447,26 +491,29 @@ export const MessageFormPage = () => {
                           <FormItem>
                             <FormLabel className="font-bold uppercase text-england-navy">Background Color</FormLabel>
                             <FormControl>
-                              <div className="grid grid-cols-2 gap-4">
+                              <ToggleGroup
+                                type="single"
+                                value={field.value}
+                                onValueChange={(value) => value && field.onChange(value)}
+                                className="grid grid-cols-2 gap-4"
+                              >
                                 {backgroundColors.map((color) => (
-                                  <button
+                                  <ToggleGroupItem
                                     key={color.value}
-                                    type="button"
-                                    onClick={() => field.onChange(color.value)}
-                                    className={`flex items-center gap-3 p-3 rounded-md border-2 transition-all ${
-                                      field.value === color.value
-                                        ? 'border-[#1D1160] bg-[#1D1160]/5'
-                                        : 'border-gray-200 hover:bg-gray-50'
-                                    }`}
+                                    value={color.value}
+                                    className={cn(
+                                      'h-auto justify-start gap-3 border-2 px-4 py-3 text-sm font-semibold uppercase tracking-wide text-england-navy',
+                                      'data-[state=on]:border-[#1D1160] data-[state=on]:bg-[#1D1160]/10'
+                                    )}
                                   >
-                                    <div
-                                      className="w-8 h-8 rounded-full border-2 border-gray-300"
+                                    <span
+                                      className="h-8 w-8 rounded-full border border-england-gray-200"
                                       style={{ backgroundColor: color.value }}
                                     />
-                                    <span className="text-sm font-medium">{color.name}</span>
-                                  </button>
+                                    {color.name}
+                                  </ToggleGroupItem>
                                 ))}
-                              </div>
+                              </ToggleGroup>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -478,7 +525,7 @@ export const MessageFormPage = () => {
                     <TabsContent value="media" className="space-y-6 mt-6">
                       <div>
                         <Label className="mb-4 block font-bold uppercase text-england-navy">Add Media (Optional)</Label>
-                        <RadioGroup value={mediaType} onValueChange={(value: any) => setMediaType(value)} className="space-y-3">
+                        <RadioGroup value={mediaType} onValueChange={(value: any) => handleMediaTypeChange(value)} className="space-y-3">
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="none" id="none" />
                             <Label htmlFor="none" className="cursor-pointer">None</Label>
@@ -488,8 +535,8 @@ export const MessageFormPage = () => {
                             <Label htmlFor="emoji" className="cursor-pointer">Emoji</Label>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="gif" id="gif" disabled />
-                            <Label htmlFor="gif" className="cursor-pointer opacity-50">GIF (Coming Soon)</Label>
+                            <RadioGroupItem value="gif" id="gif" />
+                            <Label htmlFor="gif" className="cursor-pointer">GIF</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="image" id="image" disabled />
@@ -525,6 +572,137 @@ export const MessageFormPage = () => {
                             )}
                           </div>
                         )}
+
+                        {mediaType === 'gif' && (
+                          <div className="mt-6 space-y-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                              <div className="relative flex-1">
+                                <Input
+                                  value={gifQuery}
+                                  onChange={(event) => {
+                                    clearGifError();
+                                    setGifQuery(event.target.value);
+                                  }}
+                                  placeholder="Search Openverse for celebratory GIFs..."
+                                  className="pl-10"
+                                />
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-england-gray-500" />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => searchGifs(gifQuery)}
+                                disabled={isGifLoading}
+                                className="whitespace-nowrap"
+                              >
+                                {isGifLoading ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Searching...
+                                  </>
+                                ) : (
+                                  'Search GIFs'
+                                )}
+                              </Button>
+                            </div>
+
+                            <p className="text-xs text-england-gray-600">
+                              Powered by the Openverse API (Creative Commons media). We only show GIFs under open licenses.
+                            </p>
+
+                            {gifError && (
+                              <Alert variant="destructive">
+                                <AlertDescription>{gifError}</AlertDescription>
+                              </Alert>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                              {gifResults.map((gif) => {
+                                const isSelected = selectedGif?.id === gif.id;
+
+                                return (
+                                  <button
+                                    key={gif.id}
+                                    type="button"
+                                    onClick={() => setSelectedGif(isSelected ? null : gif)}
+                                    className={`group relative overflow-hidden rounded-xl border-2 transition-all ${
+                                      isSelected
+                                        ? 'border-england-blue ring-2 ring-england-blue/40'
+                                        : 'border-transparent hover:border-england-blue/40'
+                                    }`}
+                                  >
+                                    <img
+                                      src={gif.url}
+                                      alt={gif.title}
+                                      className="h-32 w-full object-cover"
+                                      loading="lazy"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                                    <span className="absolute bottom-2 left-2 right-2 line-clamp-2 text-left text-xs font-medium text-white drop-shadow">
+                                      {gif.title || 'Untitled GIF'}
+                                    </span>
+                                    {isSelected && (
+                                      <span className="absolute top-2 left-2 rounded-full bg-white px-2 py-0.5 text-[0.6rem] font-semibold uppercase text-england-blue">
+                                        Selected
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {gifResults.length === 0 && !isGifLoading && !gifError && (
+                              <div className="rounded-xl border border-dashed border-england-gray-300 p-6 text-center text-sm text-england-gray-600">
+                                Try refining your search to find a great GIF.
+                              </div>
+                            )}
+
+                            {selectedGif && (
+                              <div className="rounded-xl border border-england-blue/30 bg-england-blue/5 p-4 text-sm text-england-blue">
+                                <p className="font-semibold uppercase text-xs tracking-[0.2em] text-england-blue/70 mb-2">
+                                  Selected GIF
+                                </p>
+                                <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                                  <img
+                                    src={selectedGif.url}
+                                    alt={selectedGif.title}
+                                    className="h-24 w-24 rounded-lg object-cover"
+                                  />
+                                  <div className="flex-1 space-y-1">
+                                    <p className="font-semibold">{selectedGif.title}</p>
+                                    {selectedGif.attribution && (
+                                      <p className="text-xs text-england-blue/80">{selectedGif.attribution}</p>
+                                    )}
+                                    {selectedGif.license && (
+                                      <p className="text-xs text-england-blue/60">
+                                        License: {selectedGif.license.toUpperCase()}{' '}
+                                        {selectedGif.licenseUrl && (
+                                          <a
+                                            href={selectedGif.licenseUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline"
+                                          >
+                                            View terms
+                                          </a>
+                                        )}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setSelectedGif(null)}
+                                    className="self-start md:self-center"
+                                  >
+                                    Clear selection
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </TabsContent>
 
@@ -546,9 +724,23 @@ export const MessageFormPage = () => {
                             {mediaType === 'emoji' && selectedEmoji && (
                               <div className="text-4xl mb-4">{selectedEmoji}</div>
                             )}
+                            {mediaType === 'gif' && selectedGif && (
+                              <div className="mb-4 overflow-hidden rounded-2xl border border-england-blue/20">
+                                <img
+                                  src={selectedGif.url}
+                                  alt={selectedGif.title}
+                                  className="w-full max-h-64 object-cover"
+                                />
+                              </div>
+                            )}
                             <p className="text-xs opacity-70" style={{ color: watchedValues.textColor }}>
                               Just now
                             </p>
+                            {mediaType === 'gif' && selectedGif?.attribution && (
+                              <p className="mt-2 text-[0.6rem] uppercase tracking-wider text-england-gray-600">
+                                {selectedGif.attribution}
+                              </p>
+                            )}
                           </CardContent>
                         </Card>
                       </div>

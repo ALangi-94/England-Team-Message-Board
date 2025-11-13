@@ -22,7 +22,12 @@ export interface MessageStyling {
 export interface MessageMedia {
   type: MediaType;
   url?: string;
+  originalUrl?: string;
   emoji?: string;
+  attribution?: string;
+  provider?: string;
+  license?: string;
+  licenseUrl?: string;
 }
 
 export interface Message {

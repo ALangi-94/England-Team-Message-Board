@@ -109,6 +109,22 @@ export const ConfirmationPage = () => {
                 {lastMessage.media && lastMessage.media.type === 'emoji' && (
                   <div className="text-5xl mb-4">{lastMessage.media.emoji}</div>
                 )}
+                {lastMessage.media && lastMessage.media.type === 'gif' && lastMessage.media.url && (
+                  <div className="mb-4 rounded-2xl border border-england-blue/10 bg-white/70 p-3">
+                    <div className="relative flex items-center justify-center overflow-hidden rounded-xl bg-white/80">
+                      <img
+                        src={lastMessage.media.url}
+                        alt={`${lastMessage.playerName} fan gif`}
+                        className="max-h-56 w-full object-contain"
+                      />
+                      {lastMessage.media.attribution && (
+                        <span className="absolute bottom-2 left-2 right-2 bg-black/55 px-2 py-1 text-[0.55rem] font-medium uppercase tracking-wider text-white backdrop-blur-sm">
+                          {lastMessage.media.attribution}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <p className="text-sm opacity-70 font-bold uppercase" style={{ color: lastMessage.styling.textColor }}>
                   To: {lastMessage.playerName}
                 </p>

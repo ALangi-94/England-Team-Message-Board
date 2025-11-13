@@ -8,11 +8,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, Heart, ExternalLink } from 'lucide-react';
 import { getSessionMessages } from '@/utils/sessionStorage';
 import type { Message, FontStyle, FontSize } from '@/types';
+import { Label } from '@/components/ui/label';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { cn } from '@/lib/utils';
 
 export const DonatePage = () => {
   const navigate = useNavigate();
   const [lastMessage, setLastMessage] = useState<Message | null>(null);
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [selectedAmount, setSelectedAmount] = useState<string>('');
 
   useEffect(() => {
     // Get the last message from session
@@ -127,6 +130,22 @@ export const DonatePage = () => {
                   {lastMessage.media && lastMessage.media.type === 'emoji' && (
                     <div className="text-4xl mb-4">{lastMessage.media.emoji}</div>
                   )}
+                  {lastMessage.media && lastMessage.media.type === 'gif' && lastMessage.media.url && (
+                    <div className="mb-4 rounded-2xl border border-england-blue/10 bg-white/70 p-3">
+                      <div className="relative flex items-center justify-center overflow-hidden rounded-xl bg-white/80">
+                        <img
+                          src={lastMessage.media.url}
+                          alt={`${lastMessage.playerName} fan gif`}
+                          className="max-h-56 w-full object-contain"
+                        />
+                        {lastMessage.media.attribution && (
+                          <span className="absolute bottom-2 left-2 right-2 bg-black/55 px-2 py-1 text-[0.55rem] font-medium uppercase tracking-wider text-white backdrop-blur-sm">
+                            {lastMessage.media.attribution}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <p className="text-xs opacity-70" style={{ color: lastMessage.styling.textColor }}>
                     To: {lastMessage.playerName}
                   </p>
@@ -183,34 +202,38 @@ export const DonatePage = () => {
 
                 {/* Donation Amount Selection */}
                 <div>
-                  <Label className="text-lg font-bold uppercase text-england-navy mb-4 block">Choose an amount</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                  <Label className="mb-4 block text-lg font-bold uppercase text-england-navy">
+                    Choose an amount
+                  </Label>
+                  <ToggleGroup
+                    type="single"
+                    value={selectedAmount}
+                    onValueChange={(value) => setSelectedAmount(value)}
+                    className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4"
+                  >
                     {donationAmounts.map((amount) => (
-                      <button
+                      <ToggleGroupItem
                         key={amount}
-                        type="button"
-                        onClick={() => setSelectedAmount(amount)}
-                        className={`p-4 border-2 font-extrabold text-xl transition-all ${
-                          selectedAmount === amount
-                            ? 'bg-england-red text-white border-england-red'
-                            : 'bg-white text-england-navy border-england-gray-300 hover:border-england-red'
-                        }`}
+                        value={String(amount)}
+                        className="h-16 border-2 text-xl font-extrabold data-[state=on]:border-england-red data-[state=on]:bg-england-red data-[state=on]:text-white"
                       >
                         £{amount}
-                      </button>
+                      </ToggleGroupItem>
                     ))}
-                  </div>
-                  <button
+                  </ToggleGroup>
+                  <Button
                     type="button"
-                    onClick={() => setSelectedAmount(0)}
-                    className={`w-full p-4 border-2 font-extrabold uppercase transition-all ${
-                      selectedAmount === 0
-                        ? 'bg-england-red text-white border-england-red'
-                        : 'bg-white text-england-navy border-england-gray-300 hover:border-england-red'
-                    }`}
+                    variant="outline"
+                    onClick={() => setSelectedAmount('custom')}
+                    className={cn(
+                      'w-full border-2 font-extrabold uppercase',
+                      selectedAmount === 'custom'
+                        ? 'border-england-red bg-england-red text-white hover:bg-england-red/90'
+                        : 'border-england-gray-300 text-england-navy hover:border-england-red'
+                    )}
                   >
                     Custom Amount
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Action Buttons */}
@@ -243,14 +266,5 @@ export const DonatePage = () => {
         </div>
       </section>
     </div>
-  );
-};
-
-// Label component (inline since it's simple)
-const Label = ({ children, className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) => {
-  return (
-    <label className={className} {...props}>
-      {children}
-    </label>
   );
 };

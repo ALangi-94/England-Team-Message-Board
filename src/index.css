@@ -81,19 +81,19 @@
 /* England-style card shadows */
 @layer utilities {
   .england-card {
-    @apply bg-white shadow-[0_4px_20px_rgba(0,45,114,0.1)] transition-all duration-300;
+    @apply rounded-2xl bg-white shadow-[0_12px_35px_rgba(0,45,114,0.08)] transition-all duration-300;
   }
 
   .england-card:hover {
-    @apply shadow-[0_8px_30px_rgba(0,45,114,0.15)];
+    @apply shadow-[0_16px_45px_rgba(0,45,114,0.14)];
   }
 
   .england-button-primary {
-    @apply bg-england-red hover:bg-[#C00016] text-white font-bold px-8 py-3 transition-colors duration-200;
+    @apply rounded-xl bg-england-red text-white shadow-lg shadow-england-red/30 hover:bg-[#C00016] hover:shadow-england-red/40 font-bold px-8 py-3 transition-all duration-200;
   }
 
   .england-button-secondary {
-    @apply bg-england-blue hover:bg-[#001E50] text-white font-bold px-8 py-3 transition-colors duration-200;
+    @apply rounded-xl bg-england-blue text-white shadow-lg shadow-england-blue/30 hover:bg-[#001E50] hover:shadow-england-blue/40 font-bold px-8 py-3 transition-all duration-200;
   }
 
   /* Angular cut effect like England website */
